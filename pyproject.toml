@@ -1,0 +1,39 @@
+[project]
+name = "pythonisa-api"
+version = "0.1.0"
+description = "Servidor intermediário do Pythonisa: API para o app, SQLite e previsão de chegada de ônibus."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "tzdata>=2024.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "httpx2",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pythonisa_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["*.ipynb", "docs"]  # notebook do grupo e documentação ficam fora do lint
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
