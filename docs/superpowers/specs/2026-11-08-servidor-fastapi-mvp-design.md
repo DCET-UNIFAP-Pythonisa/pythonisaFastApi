@@ -63,7 +63,7 @@ No MVP, as passagens dos ônibus são **simuladas**. O simulador grava os dados 
 | `Rota_Parada.minutos_programados` | **Novo** | Tempo programado desde a partida (ordem 1) até aquela parada. Dá o "programado 09:30" de cada parada a partir da grade. |
 | `Horario_Programado` | **Nova entidade** | A grade de partidas na primeira parada. É a parte "tabelada" do estilo Google Maps. |
 | `Viagem` | **Nova entidade** | Substitui `Veículo` de forma anônima: agrupa as passagens de **uma ida do ônibus** pelo itinerário, sem placa nem frota. Sem isso não dá para calcular o Δt entre paradas, porque é preciso saber que a passagem na parada 3 e na parada 4 são do mesmo ônibus. |
-| `Registro_Deteccao` | **Novos campos:** `id_viagem` (opcional), `origem`, `texto_letreiro`, `confianca_ocr`, `recebido_em` | Distingue simulado de OCR, guarda o texto bruto para auditoria e permite filtrar o treino por origem e por confiança. |
+| `Registro_Deteccao` | **Novos campos:** `id_viagem` (opcional), `ordem_itinerario` (opcional, posição resolvida no itinerário; necessária para associar viagens e calcular Δt quando uma parada aparece mais de uma vez), `origem`, `texto_letreiro`, `confianca_ocr`, `recebido_em` | Distingue simulado de OCR, guarda o texto bruto para auditoria e permite filtrar o treino por origem e por confiança. |
 | `Previsao_Viagem` | **Novos campos:** `fonte`, `horario_programado`, `versao_modelo`, `criado_em`; `id_registro_origem` passa a ser opcional | A previsão pode vir de uma detecção ou só da grade, quando não há ônibus detectado ainda. Também serve de auditoria do modelo. |
 | `Parada.referencia` | **Novo, opcional** | Texto curto como "lado da UNIFAP" ou "em frente à guarita", para diferenciar as paradas dos dois lados da rua na lista do app. |
 
@@ -131,6 +131,7 @@ erDiagram
         string id_linha FK
         string id_parada FK
         string id_viagem FK "nullable"
+        int ordem_itinerario "nullable: posição resolvida na Rota_Parada"
         datetime timestamp_passagem
         string origem "simulado | ocr"
         string texto_letreiro "nullable"
