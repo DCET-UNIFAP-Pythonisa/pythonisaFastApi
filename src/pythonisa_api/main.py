@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pythonisa_api.api.v1 import router as router_v1
 from pythonisa_api.config import Settings
+from pythonisa_api.db.base import criar_engine, criar_fabrica_sessao
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -12,6 +13,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="Pythonisa API", version="0.1.0")
     app.state.settings = settings
+    # Tabelas não são criadas na subida: isso é papel do `cli init-db`.
+    app.state.engine = criar_engine(settings.database_url)
+    app.state.fabrica_sessao = criar_fabrica_sessao(app.state.engine)
 
     app.add_middleware(
         CORSMiddleware,
