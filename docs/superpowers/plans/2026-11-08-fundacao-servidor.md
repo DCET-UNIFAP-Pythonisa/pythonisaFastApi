@@ -24,9 +24,7 @@
 
 ## Review Focus
 
-- Texto de letreiro com acentos, minúsculas, barras ou espaços extras (`"brasil novo / universidade"`) deve casar com a linha. Teste na Task 5.
 - `timestamp_passagem` sem offset deve ser rejeitado com `DADOS_INVALIDOS`, e não interpretado silenciosamente. Teste na Task 5.
-- A mesma detecção reenviada (retry do OCR, mesma linha e parada, até ±60 s) não pode duplicar registro nem viagem: devolve o existente com 200. Teste na Task 5.
 - Rota inexistente deve devolver o formato padrão de erro, não o `{"detail": ...}` do FastAPI. Teste na Task 4.
 - Rodar o seed duas vezes ou após editar o JSON não pode duplicar linhas, padrões ou horários, e o itinerário é substituído. Teste na Task 3.
 
@@ -271,78 +269,48 @@ def test_cors_liberado_para_origem_configurada(cliente):
 - [ ] **Step 4:** Run `pytest -v && ruff check . && ruff format --check .`. Expected: tudo passa.
 - [ ] **Step 5:** commit `feat: endpoints de consulta de linhas e paradas`.
 
-### Task 5: Ingestão de detecções (letreiro → linha → viagem)
+### Task 5: Registrar passagem (versão simples)
+
+> **Revisado em 2026-11-09:** o usuário pediu para manter o projeto simples. Ficaram de fora a resolução de letreiro, a deduplicação, o limiar de confiança e a associação automática de viagens em ordem > 1. Esses itens entram quando a integração com a VC for priorizada. A tabela `padrao_letreiro` e o seed continuam, mas sem lógica.
 
 **Files:**
-- Create: `src/pythonisa_api/services/letreiro.py`, `src/pythonisa_api/services/deteccao.py`, `src/pythonisa_api/schemas/deteccao.py`, `src/pythonisa_api/api/v1/deteccoes.py`
-- Test: `tests/unit/test_letreiro.py`, `tests/integration/test_deteccao.py`
+- Create: `src/pythonisa_api/services/passagem.py`, `src/pythonisa_api/schemas/passagem.py`, `src/pythonisa_api/api/v1/deteccoes.py`
+- Modify: `src/pythonisa_api/erros.py`, `src/pythonisa_api/api/erros.py` (remove códigos de letreiro e confiança), `src/pythonisa_api/config.py` e `.env.example` (remove `CONFIANCA_OCR_MINIMA` e `JANELA_ASSOCIACAO_MIN`)
+- Test: `tests/integration/test_passagem.py`
 
 **Interfaces:**
-- Consumes: `ErroDominio` e subclasses, modelos, `tempo.para_local_naive` / `agora_local` / `para_aware`, `Settings.confianca_ocr_minima` / `janela_associacao_min`.
-- Produces:
-  - `letreiro.normalizar(texto: str) -> str`: NFKD sem acentos, caixa alta, tudo que não é `[A-Z0-9]` vira espaço, espaços colapsados, strip.
-  - `letreiro.resolver_linha(texto: str, padroes: Sequence[PadraoLetreiro]) -> str`:
-    - um padrão casa quando os tokens do padrão normalizado formam um subconjunto dos tokens do texto normalizado;
-    - entre as linhas casadas vence a maior `prioridade`;
-    - empate de linhas distintas no topo levanta `LetreiroAmbiguo`;
-    - nenhuma linha casada levanta `LetreiroDesconhecido`.
-  - `schemas.deteccao.DeteccaoEntrada`:
-    - `id_parada: str`;
-    - `timestamp_passagem: AwareDatetime`;
-    - `texto_letreiro: str | None` (max 200);
-    - `id_linha: str | None`;
-    - `confianca_ocr: float | None` (0..1);
-    - `origem: Literal["ocr","simulado"]`;
-    - um `model_validator` exige `texto_letreiro` ou `id_linha` não vazios.
-  - `schemas.deteccao.DeteccaoSaida(id, id_linha, id_parada, id_viagem, origem, recebido_em)`, com `recebido_em` aware.
-  - `services.deteccao.ConfigDeteccao(confianca_minima: float, janela_associacao_min: int)` (dataclass).
-  - `services.deteccao.registrar_deteccao(sessao, entrada: DeteccaoEntrada, config: ConfigDeteccao) -> tuple[RegistroDeteccao, bool]`. O `bool` indica se o registro foi criado; `False` significa duplicata.
-  - Rota `POST /deteccoes`: 201 quando cria, 200 quando é duplicata.
+- `schemas.passagem.PassagemEntrada`:
+  - `id_linha: str`, `id_parada: str`;
+  - `timestamp_passagem: AwareDatetime`;
+  - `origem: Literal["simulado","ocr"] = "simulado"`;
+  - `id_viagem: str | None = None`;
+  - `texto_letreiro: str | None = None` (max 200);
+  - `confianca_ocr: float | None = None` (0..1).
+- `schemas.passagem.PassagemSaida(id, id_linha, id_parada, id_viagem, ordem_itinerario, timestamp_passagem, origem)`, com `timestamp_passagem` devolvido com offset `-03:00`.
+- `services.passagem.registrar_passagem(sessao, entrada: PassagemEntrada) -> RegistroDeteccao`:
+  1. Busca linha e parada (404 se não existirem).
+  2. Calcula as ordens da parada no itinerário; se não houver, levanta `ParadaForaDaLinha`.
+  3. Com `id_viagem` informado, a viagem precisa existir e ser da linha (senão `DadosInvalidos`); a ordem usada é a primeira ordem da parada.
+  4. Sem `id_viagem` e com a ordem 1 entre as ordens, cria uma `Viagem` ligada ao horário programado mais próximo (±15 min, do tipo de dia da data).
+  5. Nos demais casos, `id_viagem=None`.
+- `services.passagem.horario_mais_proximo(sessao, id_linha, momento: datetime) -> HorarioProgramado | None`.
+- Rota `POST /api/v1/deteccoes` → 201.
 
-**Ordem das regras em `registrar_deteccao`:**
-1. A parada existe; senão `ParadaNaoEncontrada`.
-2. A linha é resolvida:
-   - com só `id_linha`, a linha precisa existir (`LinhaNaoEncontrada`);
-   - com só texto, usa `resolver_linha` sobre todos os padrões;
-   - com os dois, compara, e se divergirem levanta `DadosInvalidos("id_linha e texto_letreiro indicam linhas diferentes")`.
-3. As ordens da parada no itinerário da linha são calculadas; se não houver nenhuma, `ParadaForaDaLinha`.
-4. Se `origem=="ocr"` e `confianca_ocr` não for `None` e for menor que `config.confianca_minima`, `ConfiancaBaixa`.
-5. Duplicata: se existir registro da mesma linha e parada com `|Δts| ≤ 60 s`, devolve `(existente, False)`.
-6. Associação a viagem (spec 3.4), com `ts` = horário local naive:
-   - para cada ordem `k > 1` da parada, em ordem crescente: os candidatos são as viagens da linha com `data == ts.date()` cujo último registro tem `ordem_itinerario < k` e `ts − janela ≤ ts_último ≤ ts`;
-   - escolhe a de maior `ordem_itinerario`, com desempate pelo `ts_último` mais recente;
-   - a primeira `k` com candidato define `id_viagem` e `ordem_itinerario = k`;
-   - se nenhuma servir e a ordem 1 estiver entre as ordens da parada, cria uma `Viagem(id_linha, data, origem, id_horario)`, com `id_horario` do `HorarioProgramado` do `tipo_dia` da data (seg–sex `util`, sáb `sabado`, dom `domingo`) e `|hora_partida − ts.time()| ≤ 15 min` (o mais próximo, ou `None`), e `ordem_itinerario = 1`;
-   - se nada se aplicar, `id_viagem=None` e `ordem_itinerario=min(ordens)`.
-7. O registro é gravado com `recebido_em=agora_local()`.
-
-- [ ] **Step 1: testes que falham**
-  - `test_letreiro.py`:
-    - `normalizar(" brasil novo / Universidade ") == "BRASIL NOVO UNIVERSIDADE"`;
-    - `normalizar("Macapabá–Amapá Garden") == "MACAPABA AMAPA GARDEN"`;
-    - com padrões em memória `PadraoLetreiro(id_linha="a", padrao="BRASIL NOVO UNIVERSIDADE", prioridade=0)` e `PadraoLetreiro(id_linha="b", padrao="MACAPABA GARDEN", prioridade=0)`:
-      - `resolver_linha("brasil novo / universidade", p) == "a"`;
-      - `resolver_linha("MACAPABA AMAPA GARDEN", p) == "b"`;
-      - `"UNIVERSIDADE"` levanta `LetreiroDesconhecido`;
-    - padrões `X CENTRO`→a e `CENTRO X`→b com prioridade igual: `"X CENTRO"` levanta `LetreiroAmbiguo`; com prioridade 1 em `a`, o resultado é `"a"`;
-    - `test_seed_real_rejeita_universidade_isolado`: com os padrões de `DIRETORIO_PADRAO` (lidos do JSON), `"UNIVERSIDADE"` levanta `LetreiroDesconhecido`, e `"BRASIL NOVO UNIVERSIDADE"` e `"MACAPABA AMAPA GARDEN"` resolvem para as respectivas linhas.
-  - `test_deteccao.py` (API sobre o seed mini; datas em 2026-11-09, segunda-feira, com offset `-03:00`):
-    - `p1` 06:01 com texto `"alfa centro"` e `confianca_ocr=0.9`: 201, `id_viagem` não nulo, viagem ligada ao horário 06:00;
-    - em seguida `p2` 06:05 com `id_linha="linha-a"`: 201 com o mesmo `id_viagem`, e `ordem_itinerario==2` no banco;
-    - `p2` 06:05 sem viagem anterior (banco limpo): 201, `id_viagem` null;
-    - `p1` 06:40 → viagem ligada ao horário 06:30 (10 min de diferença); `p1` 08:00 → viagem com `id_horario` null (cada caso em teste próprio, com banco limpo);
-    - `p5` com texto `"ALFA CENTRO"`: 422 `PARADA_FORA_DA_LINHA`;
-    - texto `"GAMA"`: 422 `LETREIRO_DESCONHECIDO`;
-    - `confianca_ocr=0.3` e `origem="ocr"`: 422 `CONFIANCA_BAIXA`; o mesmo com `origem="simulado"` → 201;
-    - timestamp `"2026-11-09T06:01:00"` sem offset: 422 `DADOS_INVALIDOS`;
-    - sem `texto_letreiro` e sem `id_linha`: 422 `DADOS_INVALIDOS`;
-    - `id_linha="linha-b"` com texto `"ALFA CENTRO"`: 422 `DADOS_INVALIDOS`;
-    - o mesmo payload enviado duas vezes (o segundo com +30 s): a segunda resposta é 200 com o mesmo `id`, e a contagem de registros e de viagens não muda;
-    - `recebido_em` da resposta termina com `-03:00`.
-- [ ] **Step 2:** Run `pytest tests/unit/test_letreiro.py tests/integration/test_deteccao.py -v`. Expected: FAIL.
-- [ ] **Step 3:** implementar `letreiro.py`, os schemas, `deteccao.py` e a rota. `ConfigDeteccao` é montada a partir de `request.app.state.settings` em `api/deps.py`.
+- [ ] **Step 1: testes que falham** (seed mini; segunda-feira 2026-11-09, offset `-03:00`)
+  - `p1` 06:01 em `linha-a` → 201, `ordem_itinerario==1`, `id_viagem` não nulo, viagem ligada ao horário 06:00 `util`;
+  - `p1` 08:00 → viagem sem horário;
+  - `p1` no sábado 2026-11-14 06:05 → viagem ligada ao horário 06:00 `sabado`;
+  - `p2` 06:05 com o `id_viagem` anterior → mesmo `id_viagem`, ordem 2;
+  - `p2` sem `id_viagem` → `id_viagem` nulo, ordem 2;
+  - `p5` em `linha-a` → 422 `PARADA_FORA_DA_LINHA`;
+  - linha `xyz` → 404 `LINHA_NAO_ENCONTRADA`; parada `zzz` → 404 `PARADA_NAO_ENCONTRADA`;
+  - timestamp sem offset → 422 `DADOS_INVALIDOS`;
+  - `id_viagem` inexistente → 422 `DADOS_INVALIDOS`;
+  - `"2026-11-09T09:01:00Z"` → resposta com `timestamp_passagem == "2026-11-09T06:01:00-03:00"`.
+- [ ] **Step 2:** Run `pytest tests/integration/test_passagem.py -v`. Expected: FAIL.
+- [ ] **Step 3:** implementar.
 - [ ] **Step 4:** Run `pytest -v && ruff check . && ruff format --check .`. Expected: tudo passa.
-- [ ] **Step 5:** commit `feat: ingestão de detecções com resolução de letreiro e associação a viagem`.
+- [ ] **Step 5:** commit `feat: registrar passagem (POST /deteccoes) em versão simples`.
 
 ---
 

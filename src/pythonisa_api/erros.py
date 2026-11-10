@@ -37,26 +37,5 @@ class ParadaForaDaLinha(ErroDominio):
         super().__init__(f"A linha '{id_linha}' não atende a parada '{id_parada}'.")
 
 
-class LetreiroDesconhecido(ErroDominio):
-    codigo = "LETREIRO_DESCONHECIDO"
-
-    def __init__(self, texto: str):
-        super().__init__(f"O letreiro '{texto}' não corresponde a nenhuma linha.")
-
-
-class LetreiroAmbiguo(ErroDominio):
-    codigo = "LETREIRO_AMBIGUO"
-
-    def __init__(self, texto: str, ids_linhas: list[str]):
-        super().__init__(f"O letreiro '{texto}' corresponde a mais de uma linha: {ids_linhas}.")
-
-
-class ConfiancaBaixa(ErroDominio):
-    codigo = "CONFIANCA_BAIXA"
-
-    def __init__(self, valor: float, minimo: float):
-        super().__init__(f"Confiança do OCR {valor:.2f} abaixo do mínimo {minimo:.2f}.")
-
-
 class DadosInvalidos(ErroDominio):
     codigo = "DADOS_INVALIDOS"

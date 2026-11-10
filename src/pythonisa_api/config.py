@@ -8,5 +8,3 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///data/pythonisa.db"
     cors_origins: list[str] = ["*"]
-    confianca_ocr_minima: float = 0.6
-    janela_associacao_min: int = 120

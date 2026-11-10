@@ -154,6 +154,8 @@ erDiagram
 
 ### 3.3 Regras de identificação por letreiro
 
+> Adiado no MVP: ver a nota em 5.2.
+
 - **Normalização:** caixa alta, remoção de acentos e pontuação, espaços colapsados. Exemplo: `Brasil Novo / Universidade` vira `BRASIL NOVO UNIVERSIDADE`.
 - **Casamento:** um padrão casa quando **todos os seus termos** aparecem no texto normalizado.
 - **Desempate:** se mais de uma linha casar, vence a de maior `prioridade`. Se houver empate entre linhas diferentes, a detecção é **rejeitada como ambígua**.
@@ -161,6 +163,8 @@ erDiagram
 - **Confiança:** detecções com `confianca_ocr` abaixo de um limiar configurável (padrão 0,6) são rejeitadas.
 
 ### 3.4 Associação de detecções a viagens
+
+> Simplificado no MVP: ver a nota em 5.2.
 
 - **Detecção na ordem 1 (primeira parada):** cria uma nova `Viagem` e a liga ao `Horario_Programado` mais próximo, dentro de ±15 min. Fora dessa janela, a viagem fica sem horário e a situação é "sem grade".
 - **Detecção numa ordem k > 1:** vai para a viagem mais recente da mesma linha, no mesmo dia, cuja última detecção esteja numa ordem menor que k e dentro de uma janela de tempo (padrão 120 min). Se nenhuma servir, o registro fica com `id_viagem = null`. Ele é guardado, mas não entra no treino nem na previsão.
@@ -359,6 +363,8 @@ Significado dos campos:
 **`GET /paradas/{id_parada}/previsoes`**: o "painel da parada", com a próxima chegada de cada linha que atende a parada. É o mesmo objeto acima, em lista, ordenada por `minutos_restantes`. Atende o fluxo em que o usuário escolhe só a parada.
 
 ### 5.2 Ingestão (Visão Computacional e simulador)
+
+> **Simplificação do MVP (2026-11-09):** a pedido do grupo, o MVP implementa só o registro simples de passagem. Os campos são `id_linha`, `id_parada` e `timestamp_passagem`, mais `id_viagem` opcional. Uma passagem na ordem 1 cria uma viagem ligada ao horário mais próximo (±15 min). Resolução de letreiro, limiar de confiança, deduplicação e associação automática de viagens (3.3, 3.4 e o contrato abaixo) ficam para quando a integração com a VC for priorizada. A tabela `Padrao_Letreiro` e seus dados de seed continuam no banco.
 
 **`POST /deteccoes`**
 
