@@ -1,0 +1,7 @@
+[
+  {"id": "p1", "nome": "Parada 1", "referencia": null, "latitude": 0.0, "longitude": -51.0},
+  {"id": "p2", "nome": "Parada 2", "referencia": null, "latitude": 0.0, "longitude": -51.009},
+  {"id": "p3", "nome": "Parada 3", "referencia": "lado norte", "latitude": 0.009, "longitude": -51.009},
+  {"id": "p4", "nome": "Parada 4", "referencia": null, "latitude": 0.009, "longitude": -51.0},
+  {"id": "p5", "nome": "Parada 5", "referencia": null, "latitude": 0.018, "longitude": -51.009}
+]

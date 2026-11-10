@@ -1,0 +1,13 @@
+{
+  "linha-a": [
+    {"id_parada": "p1", "sentido": "ida"},
+    {"id_parada": "p2", "sentido": "ida"},
+    {"id_parada": "p3", "sentido": "ida"},
+    {"id_parada": "p4", "sentido": "volta"}
+  ],
+  "linha-b": [
+    {"id_parada": "p5", "sentido": "ida"},
+    {"id_parada": "p3", "sentido": "ida"},
+    {"id_parada": "p2", "sentido": "volta"}
+  ]
+}

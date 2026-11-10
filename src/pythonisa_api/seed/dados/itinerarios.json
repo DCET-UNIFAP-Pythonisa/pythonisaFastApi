@@ -1,0 +1,20 @@
+{
+  "macapaba-amapa-garden": [
+    {"id_parada": "jk-marco-zero-ida", "sentido": "ida"},
+    {"id_parada": "unifap-portaria-jk-ida", "sentido": "ida"},
+    {"id_parada": "jk-amapa-garden-ida", "sentido": "ida"},
+    {"id_parada": "jk-amapa-garden-volta", "sentido": "volta"},
+    {"id_parada": "unifap-portaria-jk-volta", "sentido": "volta"},
+    {"id_parada": "jk-marco-zero-volta", "sentido": "volta"}
+  ],
+  "brasil-novo-universidade": [
+    {"id_parada": "aimore-zerao", "sentido": "ida"},
+    {"id_parada": "aimore-maritano", "sentido": "ida"},
+    {"id_parada": "amadeu-gama-unifap", "sentido": "ida"},
+    {"id_parada": "braulino-universidade", "sentido": "ida"},
+    {"id_parada": "marcelino-unifap-fundos", "sentido": "volta"},
+    {"id_parada": "marcelino-jk", "sentido": "volta"},
+    {"id_parada": "unifap-portaria-jk-volta", "sentido": "volta"},
+    {"id_parada": "jk-marco-zero-volta", "sentido": "volta"}
+  ]
+}

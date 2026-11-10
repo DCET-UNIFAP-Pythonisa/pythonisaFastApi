@@ -1,0 +1,10 @@
+{
+  "linha-a": {
+    "util": {"inicio": "06:00", "fim": "07:00", "intervalo_min": 30},
+    "sabado": {"inicio": "06:00", "fim": "06:00", "intervalo_min": 60}
+  },
+  "linha-b": {
+    "util": {"inicio": "06:00", "fim": "07:00", "intervalo_min": 30},
+    "sabado": {"inicio": "06:00", "fim": "06:00", "intervalo_min": 60}
+  }
+}

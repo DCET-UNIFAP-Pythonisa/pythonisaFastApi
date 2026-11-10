@@ -18,6 +18,16 @@ pip install -e ".[dev]"
 cp .env.example .env               # opcional: ajusta configurações
 ```
 
+## Banco de dados (uma vez)
+
+```bash
+python -m pythonisa_api.cli init-db   # cria data/pythonisa.db
+python -m pythonisa_api.cli seed      # carrega linhas, paradas, itinerários, grade e letreiros
+```
+
+Os dados ficam em `src/pythonisa_api/seed/dados/` (JSON editável; veja o README dessa pasta).
+O `seed` pode ser rodado de novo após editar os JSON: atualiza sem duplicar.
+
 ## Rodar
 
 ```bash

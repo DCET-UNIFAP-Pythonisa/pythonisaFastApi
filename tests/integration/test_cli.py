@@ -23,3 +23,19 @@ def test_init_db_cria_tabelas(tmp_path, monkeypatch):
         assert TABELAS <= set(inspect(engine).get_table_names())
     finally:
         engine.dispose()
+
+
+def test_seed_carrega_dados_reais(tmp_path, monkeypatch, capsys):
+    url = f"sqlite:///{tmp_path / 'cli.db'}"
+    monkeypatch.setenv("DATABASE_URL", url)
+    assert cli.main(["init-db"]) == 0
+    assert cli.main(["seed"]) == 0
+    saida = capsys.readouterr().out
+    assert "linhas=2" in saida
+    engine = create_engine(url)
+    try:
+        with engine.connect() as conexao:
+            total = conexao.exec_driver_sql("SELECT COUNT(*) FROM linha").scalar()
+        assert total == 2
+    finally:
+        engine.dispose()

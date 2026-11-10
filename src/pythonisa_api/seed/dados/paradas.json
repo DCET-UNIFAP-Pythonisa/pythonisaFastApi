@@ -1,0 +1,14 @@
+[
+  {"id": "jk-marco-zero-ida", "nome": "Rod. JK - Marco Zero", "referencia": "sentido UNIFAP", "latitude": -0.00018, "longitude": -51.07904},
+  {"id": "jk-marco-zero-volta", "nome": "Rod. JK - Marco Zero", "referencia": "sentido Centro", "latitude": -0.00093, "longitude": -51.07949},
+  {"id": "unifap-portaria-jk-ida", "nome": "UNIFAP - Portaria Rod. JK", "referencia": "lado da UNIFAP", "latitude": -0.00628, "longitude": -51.08246},
+  {"id": "unifap-portaria-jk-volta", "nome": "UNIFAP - Portaria Rod. JK", "referencia": "lado do Amapá Garden", "latitude": -0.00670, "longitude": -51.08225},
+  {"id": "jk-amapa-garden-ida", "nome": "Rod. JK - Amapá Garden / Embrapa", "referencia": "lado oeste", "latitude": -0.01198, "longitude": -51.08287},
+  {"id": "jk-amapa-garden-volta", "nome": "Rod. JK - Amapá Garden / Embrapa", "referencia": "lado leste", "latitude": -0.01215, "longitude": -51.08259},
+  {"id": "aimore-zerao", "nome": "R. Inspetor Aimoré - Zerão", "referencia": "lado oeste da UNIFAP", "latitude": 0.00105, "longitude": -51.08767},
+  {"id": "aimore-maritano", "nome": "R. Inspetor Aimoré - Av. Dom José Maritano", "referencia": null, "latitude": -0.00031, "longitude": -51.08769},
+  {"id": "amadeu-gama-unifap", "nome": "R. Amadeu Gama - UNIFAP", "referencia": "lado oeste da UNIFAP", "latitude": -0.00300, "longitude": -51.08895},
+  {"id": "braulino-universidade", "nome": "R. Doutor Braulino - Bairro Universidade", "referencia": null, "latitude": -0.00875, "longitude": -51.09035},
+  {"id": "marcelino-unifap-fundos", "nome": "R. Inspetor Marcelino - UNIFAP (fundos)", "referencia": null, "latitude": -0.01154, "longitude": -51.08705},
+  {"id": "marcelino-jk", "nome": "R. Inspetor Marcelino - Rod. JK", "referencia": null, "latitude": -0.01139, "longitude": -51.08357}
+]

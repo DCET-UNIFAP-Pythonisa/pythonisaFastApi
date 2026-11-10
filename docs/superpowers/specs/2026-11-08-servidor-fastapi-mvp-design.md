@@ -404,10 +404,12 @@ Regras de validação:
 
 Os dados ficam em JSON dentro de `src/pythonisa_api/seed/dados/`, versionados, para o grupo corrigir nomes e coordenadas sem tocar em código.
 
-- **Paradas e itinerários:** **estimados a partir do OpenStreetMap e de mapas públicos**, com cerca de 8 a 12 paradas por sentido em cada linha, e marcados como simulados no README.
-  - Paradas dos dois lados da rua são registros distintos, ex.: `unifap-guarita-jk-ida` e `unifap-guarita-jk-volta`.
-  - As paradas da UNIFAP são **compartilhadas pelas duas linhas**, para o painel da parada mostrar duas opções.
-  - O grupo valida a lista antes da demo.
+- **Paradas e itinerários:** **escopo restrito ao território da UNIFAP** (decisão do grupo em 2026-11-09). Cada linha tem só o trecho que passa pelo campus Marco Zero, não o trajeto pela cidade.
+  - Os ônibus não entram no campus. As paradas são pontos de ônibus reais do OpenStreetMap no perímetro: Rod. JK a leste, R. Inspetor Aimoré a oeste e R. Inspetor Marcelino ao sul.
+  - O OSM não tem as rotas de Macapá, então os itinerários são **estimados**. A ordem 1 de cada linha é a entrada no território, onde fica a câmera simulada.
+  - Paradas dos dois lados da rua são registros distintos, ex.: `unifap-portaria-jk-ida` e `unifap-portaria-jk-volta`.
+  - Duas paradas são **compartilhadas pelas duas linhas**, para o painel da parada mostrar mais de uma opção.
+  - A lista de paradas com os nós OSM está em `src/pythonisa_api/seed/dados/README.md` e aguarda validação do grupo.
 - **`minutos_programados`:** derivados da distância entre paradas, com uma velocidade média programada de cerca de 20 km/h.
 - **Grade:** em dia útil, partidas a cada 30 min das 05:30 às 22:00. Sábado a cada 45 min. Domingo a cada 60 min. Os valores são editáveis.
 - **Padrões de letreiro:** conforme 3.3.
