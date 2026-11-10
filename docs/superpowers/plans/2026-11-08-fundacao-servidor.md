@@ -13,12 +13,11 @@
 ## Global Constraints
 
 - Prefixo da API: `/api/v1`.
-- Formato de erro: `{"erro": {"codigo": "<CODIGO>", "mensagem": "<texto>"}}`. Códigos e status: `LINHA_NAO_ENCONTRADA` 404, `PARADA_NAO_ENCONTRADA` 404, `NAO_ENCONTRADO` 404 (rota inexistente), `PARADA_FORA_DA_LINHA` 422, `LETREIRO_DESCONHECIDO` 422, `LETREIRO_AMBIGUO` 422, `CONFIANCA_BAIXA` 422, `DADOS_INVALIDOS` 422.
+- Formato de erro: `{"erro": {"codigo": "<CODIGO>", "mensagem": "<texto>"}}`. Códigos e status: `LINHA_NAO_ENCONTRADA` 404, `PARADA_NAO_ENCONTRADA` 404, `NAO_ENCONTRADO` 404 (rota inexistente), `PARADA_FORA_DA_LINHA` 422, `DADOS_INVALIDOS` 422. (Códigos de letreiro e confiança: adiados, ver Task 5.)
 - Fuso: `America/Belem`. Datetimes **persistidos como naive em horário local** (UTC−3 fixo). A API devolve ISO 8601 com offset `-03:00`. A entrada de datetime **exige** offset.
-- Variáveis de ambiente (nomes exatos): `DATABASE_URL` (padrão `sqlite:///data/pythonisa.db`), `CORS_ORIGINS` (padrão `["*"]`), `CONFIANCA_OCR_MINIMA` (padrão `0.6`), `JANELA_ASSOCIACAO_MIN` (padrão `120`).
+- Variáveis de ambiente (nomes exatos): `DATABASE_URL` (padrão `sqlite:///data/pythonisa.db`), `CORS_ORIGINS` (padrão `["*"]`).
 - `PRAGMA foreign_keys=ON` em toda conexão SQLite.
 - Domínios fechados: `sentido` ∈ {`ida`, `volta`}; `origem` ∈ {`simulado`, `ocr`}; `tipo_dia` ∈ {`util`, `sabado`, `domingo`}; `fonte` ∈ {`deteccao`, `programado`}.
-- Nenhum padrão de letreiro do seed real casa com o texto `UNIVERSIDADE` isolado.
 - Identificadores de código e nomes de campos em português, como na spec.
 - Todo comando é rodado dentro do venv (`source .venv/bin/activate`), a partir da raiz `pythonisaFastApi/`.
 
