@@ -10,6 +10,7 @@ from pythonisa_api.erros import ErroDominio
 STATUS_POR_CODIGO = {
     "LINHA_NAO_ENCONTRADA": 404,
     "PARADA_NAO_ENCONTRADA": 404,
+    "MODELO_NAO_TREINADO": 404,
     "PARADA_FORA_DA_LINHA": 422,
     "DADOS_INVALIDOS": 422,
 }

@@ -37,5 +37,12 @@ class ParadaForaDaLinha(ErroDominio):
         super().__init__(f"A linha '{id_linha}' não atende a parada '{id_parada}'.")
 
 
+class ModeloNaoTreinado(ErroDominio):
+    codigo = "MODELO_NAO_TREINADO"
+
+    def __init__(self):
+        super().__init__("Nenhum modelo treinado. Rode simular-historico e treinar.")
+
+
 class DadosInvalidos(ErroDominio):
     codigo = "DADOS_INVALIDOS"

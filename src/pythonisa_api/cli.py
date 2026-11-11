@@ -2,12 +2,14 @@
 
 import argparse
 import sys
+from pathlib import Path
 
 from sqlalchemy import Engine
 from sqlalchemy.exc import OperationalError
 
 from pythonisa_api.config import Settings
 from pythonisa_api.db.base import criar_engine, criar_fabrica_sessao, criar_tabelas
+from pythonisa_api.ml.modelo import montar_trechos, salvar_preditor, treinar
 from pythonisa_api.seed.carregar import ErroSeed, carregar_seed
 from pythonisa_api.simulador.historico import simular_historico
 from pythonisa_api.tempo import agora_local
@@ -50,7 +52,30 @@ def _simular_historico(engine: Engine, settings: Settings, args: argparse.Namesp
     return 0
 
 
-COMANDOS = {"init-db": _init_db, "seed": _seed, "simular-historico": _simular_historico}
+def _treinar(engine: Engine, settings: Settings, args: argparse.Namespace) -> int:
+    with criar_fabrica_sessao(engine)() as sessao:
+        trechos = montar_trechos(sessao)
+    try:
+        preditor = treinar(trechos)
+    except ValueError as erro:
+        print(f"Histórico insuficiente ({erro}): rode simular-historico antes.", file=sys.stderr)
+        return 1
+    salvar_preditor(preditor, Path(settings.caminho_modelo))
+    m = preditor.metricas
+    print(
+        f"Modelo salvo em {settings.caminho_modelo} ({preditor.versao}). "
+        f"Erro médio: {m['mae_segundos']:.0f} s "
+        f"(média simples: {m['mae_baseline_segundos']:.0f} s), R² = {m['r2']:.2f}."
+    )
+    return 0
+
+
+COMANDOS = {
+    "init-db": _init_db,
+    "seed": _seed,
+    "simular-historico": _simular_historico,
+    "treinar": _treinar,
+}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -60,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("seed", help="carrega linhas, paradas, itinerários, grade e letreiros")
     simular = sub.add_parser("simular-historico", help="gera passagens simuladas (base de treino)")
     simular.add_argument("--dias", type=int, default=60, help="quantos dias simular (padrão 60)")
+    sub.add_parser("treinar", help="treina a regressão com o histórico e salva o modelo")
     args = parser.parse_args(argv)
 
     settings = Settings()

@@ -7,6 +7,11 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 
+def obter_preditor(request: Request):
+    """Modelo carregado na subida do app, ou None (previsões só pela grade)."""
+    return request.app.state.preditor
+
+
 def obter_sessao(request: Request) -> Iterator[Session]:
     with request.app.state.fabrica_sessao() as sessao:
         yield sessao

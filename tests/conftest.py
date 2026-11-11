@@ -14,6 +14,7 @@ def settings_teste(tmp_path) -> Settings:
     return Settings(
         database_url=f"sqlite:///{tmp_path / 'teste.db'}",
         cors_origins=["http://localhost:5555"],
+        caminho_modelo=str(tmp_path / "modelo.joblib"),
         _env_file=None,
     )
 

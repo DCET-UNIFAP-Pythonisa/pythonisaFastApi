@@ -8,3 +8,4 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///data/pythonisa.db"
     cors_origins: list[str] = ["*"]
+    caminho_modelo: str = "data/modelo.joblib"
