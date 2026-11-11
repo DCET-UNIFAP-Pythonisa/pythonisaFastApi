@@ -550,3 +550,42 @@ Ordem sugerida. Cada etapa termina com testes passando. O plano detalhado, com p
 - Validar a lista de paradas e a ordem dos itinerários estimados (etapa 3).
 - Confirmar com a frente de VC o contrato de `POST /deteccoes`, principalmente `id_parada` como local da câmera e a escala de `confianca_ocr`.
 - Confirmar se a empresa das duas linhas é mesmo "Capital Morena". O app lista as duas sob essa empresa.
+
+---
+
+## 12. Decisão da Parte 2 (2026-11-11): previsão em níveis
+
+Esta seção **substitui** os pontos correspondentes de 5.1, 6.3 e 7.4. Prevalece sobre eles onde houver conflito.
+
+- **Nível 1 (tabela):** `GET /previsoes` responde com o horário programado (grade + `minutos_programados`). O previsto é igual ao programado. Assim o app já pode integrar.
+- **Nível 2 (tabela + regressão):** o mesmo endpoint, com o mesmo JSON. O previsto passa a ser a partida programada somada aos Δt de cada trecho estimados pela regressão (hora cheia e tipo de dia como categorias). O modelo é treinado com o **histórico simulado**:
+  - 60 dias, com passagens em todas as paradas;
+  - gravado direto no banco, numa transação por dia.
+- **Nível 3 (fora do MVP):** usar onde o ônibus foi detectado hoje. Isso depende da Visão Computacional. A estrutura (`POST /deteccoes`, `viagem`, `registro_deteccao`) já existe.
+
+**Cortes de simplicidade** em relação ao restante da spec:
+- sem simulador "ao vivo" e sem tarefa em segundo plano;
+- sem `POST /modelo/treinar`: o treino é feito pelo comando `treinar`;
+- `previsao_viagem` não é gravada;
+- sem painel `GET /paradas/{id}/previsoes`;
+- sem `PERMITIR_RELOGIO_FIXO`: o parâmetro `agora` fica sempre disponível;
+- sem os campos `fonte` e `ultima_deteccao`, que voltam no Nível 3;
+- sem o comando `resetar`.
+
+**Contrato de `GET /api/v1/previsoes?id_linha=&id_parada=[&agora=]`:**
+
+```json
+{
+  "linha": {"id": "...", "nome": "..."},
+  "parada": {"id": "...", "nome": "..."},
+  "situacao": "adiantado | no_horario | atrasado | sem_servico",
+  "horario_programado": "2026-11-09T06:38:00-03:00",
+  "horario_previsto": "2026-11-09T06:34:00-03:00",
+  "minutos_restantes": 24,
+  "diferenca_minutos": -4,
+  "versao_modelo": "regressao-linear-2026-11-11T10:02",
+  "gerado_em": "2026-11-09T06:10:00-03:00"
+}
+```
+
+Com `sem_servico` (não há mais partidas no dia), os campos de horário e minutos vêm `null`. No Nível 1, `versao_modelo` vem `null`.
