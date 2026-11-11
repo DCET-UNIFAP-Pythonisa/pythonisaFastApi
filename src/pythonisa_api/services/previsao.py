@@ -44,6 +44,27 @@ def _situacao(diferenca_minutos: int) -> str:
     return "no_horario"
 
 
+def _chegadas_previstas(
+    partida: datetime,
+    ordens: list[int],
+    minutos: dict[int, int],
+    id_linha: str,
+    preditor: Preditor | None,
+) -> dict[int, datetime]:
+    """Horário previsto em cada ordem pedida, para um ônibus que sai às `partida`."""
+    if preditor is None:  # Nível 1: o previsto é o programado
+        return {ordem: partida + timedelta(minutes=minutos[ordem]) for ordem in ordens}
+    chegadas, momento, ultima = {}, partida, max(ordens)
+    for ordem in range(1, ultima + 1):  # Nível 2: soma o tempo previsto de cada trecho
+        if ordem in ordens:
+            chegadas[ordem] = momento
+        if ordem == ultima:
+            break
+        segundos = preditor.prever_segundos(id_linha, ordem, momento)
+        momento += timedelta(seconds=round(segundos))  # segundos inteiros no JSON
+    return chegadas
+
+
 def prever_chegada(
     sessao: Session,
     id_linha: str,
@@ -69,9 +90,10 @@ def prever_chegada(
     candidatos = []  # (previsto, programado) de cada partida × ocorrência da parada
     for hora in partidas:
         partida = datetime.combine(agora.date(), hora)
+        chegadas = _chegadas_previstas(partida, ordens, minutos, id_linha, preditor)
         for ordem in ordens:
             programado = partida + timedelta(minutes=minutos[ordem])
-            previsto = programado
+            previsto = chegadas[ordem]
             if previsto >= agora:
                 candidatos.append((previsto, programado))
 

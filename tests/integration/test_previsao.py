@@ -1,3 +1,5 @@
+from datetime import time
+
 URL = "/api/v1/previsoes"
 
 
@@ -79,3 +81,46 @@ def test_agora_sem_fuso(api):
 
 def test_sem_agora_usa_relogio(api):
     assert _prever(api, "p3", None).status_code == 200
+
+
+class PreditorFixo:
+    """Preditor falso: todo trecho leva `segundos`; registra as chamadas."""
+
+    versao = "fixo"
+
+    def __init__(self, segundos=120.0):
+        self.segundos, self.chamadas = segundos, []
+
+    def prever_segundos(self, id_linha, ordem_origem, momento):
+        self.chamadas.append((ordem_origem, momento.time()))
+        return self.segundos
+
+
+def test_previsto_vem_do_modelo(api, app):
+    app.state.preditor = preditor = PreditorFixo(120)
+    corpo = _prever(api, "p3", "2026-11-09T06:10:00-03:00").json()
+    # Partida 06:30 + 2 trechos de 2 min = 06:34; programado 06:38.
+    assert corpo["horario_programado"] == "2026-11-09T06:38:00-03:00"
+    assert corpo["horario_previsto"] == "2026-11-09T06:34:00-03:00"
+    assert corpo["diferenca_minutos"] == -4
+    assert corpo["situacao"] == "adiantado"
+    assert corpo["minutos_restantes"] == 24
+    assert corpo["versao_modelo"] == "fixo"
+    assert {(1, time(6, 30)), (2, time(6, 32))} <= set(preditor.chamadas)
+
+
+def test_previsto_atrasado(api, app):
+    app.state.preditor = PreditorFixo(300)
+    corpo = _prever(api, "p3", "2026-11-09T06:05:00-03:00").json()
+    # Partida 06:00 + 2 trechos de 5 min = 06:10; programado 06:08.
+    assert corpo["horario_previsto"] == "2026-11-09T06:10:00-03:00"
+    assert corpo["diferenca_minutos"] == 2
+    assert corpo["minutos_restantes"] == 5
+    assert corpo["situacao"] == "atrasado"
+
+
+def test_previsto_sem_fracao_de_segundo(api, app):
+    app.state.preditor = PreditorFixo(100.4)
+    corpo = _prever(api, "p3", "2026-11-09T06:10:00-03:00").json()
+    # 06:30 + 2 × 100 s (arredondados) = 06:33:20, sem microssegundos no JSON.
+    assert corpo["horario_previsto"] == "2026-11-09T06:33:20-03:00"

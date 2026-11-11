@@ -30,6 +30,27 @@ O `seed` pode ser rodado de novo após editar os JSON: atualiza nomes, coordenad
 sem duplicar. Ele não apaga o que saiu dos JSON: para remover ou renomear o id de uma parada ou
 mudar a grade, recrie o banco (apague `data/pythonisa.db` e rode `init-db` e `seed`).
 
+## Previsão (modelo de regressão)
+
+Sem modelo treinado, `GET /api/v1/previsoes` responde só com a grade (previsto = programado).
+Para o previsto vir da regressão linear:
+
+```bash
+python -m pythonisa_api.cli simular-historico   # 60 dias de passagens simuladas (pode repetir: não duplica)
+python -m pythonisa_api.cli treinar             # treina e salva data/modelo.joblib
+```
+
+Reinicie o servidor para ele carregar o modelo novo. `GET /api/v1/modelo` mostra o erro médio do
+modelo e o de uma média simples, para comparação.
+
+Exemplo (o parâmetro `agora` simula um horário, com fuso):
+
+```
+GET /api/v1/previsoes?id_linha=brasil-novo-universidade&id_parada=jk-marco-zero-volta&agora=2026-11-11T07:20:00-03:00
+```
+
+Com os dados simulados, às 07:20 (pico) o ônibus aparece atrasado uns 4 min; às 10:20, adiantado.
+
 ## Rodar
 
 ```bash

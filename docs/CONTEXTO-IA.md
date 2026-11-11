@@ -1,6 +1,6 @@
 # Contexto para continuar o projeto (handoff entre máquinas/IAs)
 
-> Leia este arquivo antes de qualquer ação. Atualizado em 2026-11-09, ao fim da Parte 1.
+> Leia este arquivo antes de qualquer ação. Atualizado em 2026-11-11, ao fim da Parte 2.
 
 ## 1. O projeto
 
@@ -42,12 +42,13 @@
 
 ## 4. Estado atual
 
-**Parte 1 (fundação): CONCLUÍDA.** São 49 testes passando e `ruff` limpo, na branch `lucas`.
+**Parte 1 (fundação) e Parte 2 (previsão, Níveis 1 e 2): CONCLUÍDAS.** São 104 testes passando e `ruff` limpo, na branch `lucas`. Antes da Parte 2 houve uma revisão completa (code-review, security-review, code-reviewer e simplify).
 
 | Item | Onde |
 |---|---|
 | Spec (design completo; seções 3.3/3.4/5.2 marcadas como adiadas) | `docs/superpowers/specs/2026-11-08-servidor-fastapi-mvp-design.md` |
 | Plano da Parte 1 (executado) | `docs/superpowers/plans/2026-11-08-fundacao-servidor.md` |
+| Decisão da previsão em níveis (spec, seção 12) e plano da Parte 2 (executado) | `docs/superpowers/plans/2026-11-11-previsao-parte2.md` |
 | Overview original do grupo e MER antigo | `docs/Overview Outubro Pythonisa.md` |
 | Notebook original de predição (referência) | `predicaoChegada.ipynb` |
 
@@ -61,24 +62,29 @@
 | `GET /paradas?id_linha=` | Lista de paradas, com filtro opcional por linha |
 | `GET /paradas/proxima?latitude=&longitude=` | Parada mais próxima de um ponto |
 | `GET /paradas/{id}/linhas` | Linhas que atendem a parada |
+| `GET /previsoes?id_linha=&id_parada=[&agora=]` | Próxima chegada: programado, previsto, minutos restantes, situação (adiantado/no_horario/atrasado/sem_servico). Contrato na spec, seção 12. |
+| `GET /modelo` | Versão e métricas do modelo carregado (404 `MODELO_NAO_TREINADO` sem modelo) |
 | `POST /deteccoes` | Registra uma passagem `{id_linha, id_parada, timestamp_passagem, id_viagem?}`. Na ordem 1, cria uma `Viagem` ligada ao horário mais próximo (±15 min). |
 
-**Formato de erro:** `{"erro": {"codigo": "...", "mensagem": "..."}}`. Os códigos são `LINHA_NAO_ENCONTRADA`, `PARADA_NAO_ENCONTRADA`, `PARADA_FORA_DA_LINHA`, `DADOS_INVALIDOS` e `NAO_ENCONTRADO`.
+**Formato de erro:** `{"erro": {"codigo": "...", "mensagem": "..."}}`. Os códigos são `LINHA_NAO_ENCONTRADA`, `PARADA_NAO_ENCONTRADA`, `PARADA_FORA_DA_LINHA`, `DADOS_INVALIDOS`, `MODELO_NAO_TREINADO`, `NAO_ENCONTRADO` (rota inexistente) e `ERRO_HTTP` (ex.: 405).
 
 **Estrutura:**
 
 ```
 src/pythonisa_api/
-  main.py (create_app) · config.py (.env) · tempo.py (fuso) · erros.py · cli.py (init-db, seed)
-  api/      deps.py · erros.py (handlers) · v1/{saude,linhas,paradas,deteccoes}.py
-  schemas/  consulta.py · passagem.py           (Pydantic = contrato JSON)
-  services/ consulta.py · geo.py · passagem.py  (regras, sem FastAPI)
+  main.py (create_app, carrega o modelo) · config.py (.env) · tempo.py (fuso) · erros.py
+  cli.py    init-db · seed · simular-historico · treinar
+  api/      deps.py · erros.py (handlers) · v1/{saude,linhas,paradas,deteccoes,previsoes,modelo}.py
+  schemas/  consulta.py · passagem.py · previsao.py          (Pydantic = contrato JSON)
+  services/ consulta.py · geo.py · passagem.py · previsao.py (regras, sem FastAPI)
+  simulador/historico.py (passagens simuladas com pico)
+  ml/       modelo.py (trechos, treino, salvar/carregar o preditor)
   db/       base.py (engine, PRAGMA foreign_keys) · models.py (8 tabelas)
   seed/     carregar.py · dados/*.json (+ README com os nós OSM)
 tests/      conftest.py · unit/ · integration/ · fixtures/seed_mini/
 ```
 
-**Stack:** Python 3.13, FastAPI, Uvicorn, SQLAlchemy 2 (síncrono), Pydantic v2, pydantic-settings, tzdata, pytest, httpx2 e ruff. O ambiente usa `venv` + `pip`. Não há Alembic: se o modelo mudar, apague o `.db` e rode `init-db` + `seed`.
+**Stack:** Python 3.13, FastAPI, Uvicorn, SQLAlchemy 2 (síncrono), Pydantic v2, pydantic-settings, tzdata, scikit-learn, pytest, httpx2 e ruff. O ambiente usa `venv` + `pip`. Não há Alembic: se o modelo mudar, apague o `.db` e rode `init-db` + `seed`.
 
 ## 5. Preparar a máquina nova
 
@@ -88,33 +94,21 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m pythonisa_api.cli init-db
 python -m pythonisa_api.cli seed       # esperado: linhas=2 paradas=12 itinerario=14 horarios=143 padroes_letreiro=2
-pytest && ruff check .                 # esperado: 49 passed
+python -m pythonisa_api.cli simular-historico   # ~24 mil passagens (60 dias)
+python -m pythonisa_api.cli treinar             # salva data/modelo.joblib
+pytest && ruff check .                 # esperado: 104 passed
 uvicorn pythonisa_api.main:app --reload   # http://localhost:8000/docs
 ```
 
 `data/`, `.venv/` e `.env` não vão para o git. Por isso o banco precisa ser recriado na máquina nova.
 
-## 6. Próximo passo: Parte 2 (o que aparece na demo)
+## 6. Próximos passos
 
-Antes de implementar, **escrever um plano curto e enxuto** e mostrar ao usuário. O conteúdo previsto:
+- **Material para os colegas:** explicação dos endpoints que o app vai usar e, mais adiante, uma apresentação (o usuário pediu para tratar isso depois da Parte 2).
+- **Integração do app Flutter** com `/paradas`, `/paradas/{id}/linhas` e `/previsoes` (outro repositório).
+- **Nível 3 (só com a Visão Computacional):** usar onde o ônibus foi detectado hoje (`POST /deteccoes`) para corrigir a previsão; antes de dados reais, exigir chave de API no `POST /deteccoes` e restringir `CORS_ORIGINS`.
 
-1. **Simulador de tráfego e histórico:** gera N dias de passagens em **todas** as paradas, via `services.passagem.registrar_passagem`, informando o `id_viagem`.
-   - `Δt = base × fator_horario × fator_dia × ruído`.
-   - `fator_horario` ≈ 1,3 nos picos (06:30–08:30, 11:30–13:30, 17:00–19:00) e ≈ 0,85 fora deles.
-   - O ruído log-normal tem desvio de ~10%.
-   - O tempo base fica abaixo do programado, para o ônibus adiantar fora do pico.
-   - A semente é fixa, para o resultado ser reprodutível.
-   - Detalhes na spec, seção 6.
-2. **ML:** `PreditorTrecho` com `prever_segundos(id_linha, ordem_origem, momento)`.
-   - O modelo é Regressão Linear (`OneHotEncoder` + `LinearRegression`) sobre trecho, hora cheia e tipo de dia.
-   - O baseline é a média histórica.
-   - O teste usa divisão temporal (últimos 7 dias).
-   - Comando `treinar`, artefato salvo com `joblib` e `GET /modelo` com métricas. Detalhes na spec, seção 7.
-3. **Previsão:** `GET /previsoes?id_linha=&id_parada=` e `GET /paradas/{id}/previsoes`.
-   - Parâmetro opcional `agora` para a demo, permitindo simular um horário de pico.
-   - Contrato na spec, seção 5.1.
-4. **Passagens "ao vivo":** só na 1ª parada, geradas de forma determinística conforme o relógio.
-5. Comando `resetar` (init-db + seed + histórico + treino) e um roteiro de demo.
+**Roteiro de demo:** `GET /previsoes?id_linha=brasil-novo-universidade&id_parada=jk-marco-zero-volta` com `agora` às 07:20 (pico: atrasado ~4 min) e às 10:20 (fora do pico: adiantado ~2 min), em dia útil. `GET /modelo` mostra o erro médio do modelo (~14 s) contra o da média simples (~15 s).
 
 ## 7. Pendências
 
@@ -124,5 +118,3 @@ Antes de implementar, **escrever um plano curto e enxuto** e mostrar ao usuário
   - a `DATABASE_URL` relativa depende da pasta de onde o servidor é iniciado;
   - uma passagem duplicada na ordem 1 cria duas viagens;
   - um timestamp no futuro é aceito.
-- **Revisão independente:** o usuário ainda não decidiu se um revisor por subagente olha a Parte 1 agora ou tudo no fim da Parte 2.
-- **Arquivos do usuário:** `docs/assets/` tem imagens antigas apagadas e um `MER_pytonisa.png` novo, além de PDFs da spec e do plano. Não foram commitados por mim, e a decisão sobre eles é do usuário.
