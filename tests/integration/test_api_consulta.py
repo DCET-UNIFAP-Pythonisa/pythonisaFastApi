@@ -1,11 +1,3 @@
-import pytest
-
-
-@pytest.fixture
-def api(cliente, sessao_com_seed_mini):
-    return cliente
-
-
 def _erro(resposta):
     return resposta.json()["erro"]["codigo"]
 

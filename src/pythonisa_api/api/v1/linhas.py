@@ -1,14 +1,10 @@
-from typing import Annotated
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-
-from pythonisa_api.api.deps import obter_sessao
+from pythonisa_api.api.deps import SessaoDep
 from pythonisa_api.schemas.consulta import ItinerarioSaida, LinhaSaida
 from pythonisa_api.services import consulta
 
 router = APIRouter(prefix="/linhas", tags=["linhas"])
-SessaoDep = Annotated[Session, Depends(obter_sessao)]
 
 
 @router.get("", response_model=list[LinhaSaida], summary="Lista as linhas")

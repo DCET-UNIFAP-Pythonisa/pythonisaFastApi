@@ -25,4 +25,7 @@ R. Inspetor Aimoré a oeste, R. Inspetor Marcelino ao sul).
 | marcelino-unifap-fundos | 10656837773 |
 | marcelino-jk | 10312072296 |
 
-Para corrigir: edite os JSON desta pasta e rode `python -m pythonisa_api.cli seed` de novo.
+Para corrigir nomes, coordenadas ou itinerários: edite os JSON desta pasta e rode
+`python -m pythonisa_api.cli seed` de novo. Para remover ou renomear o id de uma parada, ou mudar
+a grade, recrie o banco (apague `data/pythonisa.db` e rode `init-db` e `seed`): o seed não apaga
+registros que saíram dos JSON.

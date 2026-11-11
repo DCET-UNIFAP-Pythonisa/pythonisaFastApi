@@ -26,7 +26,9 @@ python -m pythonisa_api.cli seed      # carrega linhas, paradas, itinerários, g
 ```
 
 Os dados ficam em `src/pythonisa_api/seed/dados/` (JSON editável; veja o README dessa pasta).
-O `seed` pode ser rodado de novo após editar os JSON: atualiza sem duplicar.
+O `seed` pode ser rodado de novo após editar os JSON: atualiza nomes, coordenadas e itinerários
+sem duplicar. Ele não apaga o que saiu dos JSON: para remover ou renomear o id de uma parada ou
+mudar a grade, recrie o banco (apague `data/pythonisa.db` e rode `init-db` e `seed`).
 
 ## Rodar
 

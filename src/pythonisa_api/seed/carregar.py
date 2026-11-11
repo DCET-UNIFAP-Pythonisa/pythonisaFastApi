@@ -2,15 +2,17 @@
 
 Idempotente: pode rodar várias vezes. Linhas e paradas são atualizadas, o itinerário de
 cada linha é substituído e horários/padrões só são inseridos se ainda não existirem.
-Tudo é validado antes de gravar: em caso de erro, nada é alterado.
+Arquivo ou campo inválido vira ErroSeed e nada é gravado (a transação é desfeita).
 """
 
 import json
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+from itertools import pairwise
 from pathlib import Path
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from pythonisa_api.db.models import HorarioProgramado, Linha, PadraoLetreiro, Parada, RotaParada
@@ -39,10 +41,11 @@ class ResumoSeed:
 
 
 def _ler(diretorio: Path, nome: str):
-    caminho = diretorio / nome
-    if not caminho.exists():
-        raise ErroSeed(f"Arquivo de seed ausente: {caminho}")
-    return json.loads(caminho.read_text(encoding="utf-8"))
+    try:
+        return json.loads((diretorio / nome).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as erro:
+        # OSError: arquivo ausente ou ilegível. ValueError: JSON inválido ou texto fora de UTF-8.
+        raise ErroSeed(f"{nome}: não foi possível ler o arquivo ({erro})") from erro
 
 
 def _hora(texto: str, contexto: str) -> time:
@@ -65,7 +68,7 @@ def _expandir_grade(inicio: time, fim: time, intervalo_min: int) -> list[time]:
 
 def _minutos_programados(coordenadas: list[tuple[float, float]]) -> list[int]:
     minutos, acumulado = [0], 0.0
-    for (lat1, lon1), (lat2, lon2) in zip(coordenadas, coordenadas[1:], strict=False):
+    for (lat1, lon1), (lat2, lon2) in pairwise(coordenadas):
         acumulado += haversine_metros(lat1, lon1, lat2, lon2)
         minutos.append(round(acumulado * FATOR_TORTUOSIDADE / VELOCIDADE_PROGRAMADA_M_POR_MIN))
     return minutos
@@ -114,6 +117,18 @@ def _validar(linhas, paradas, itinerarios, grade, letreiros) -> None:
 
 
 def carregar_seed(sessao: Session, diretorio: Path = DIRETORIO_PADRAO) -> ResumoSeed:
+    try:
+        return _carregar(sessao, diretorio)
+    except (KeyError, TypeError, ValueError) as erro:
+        # Campo obrigatório ausente, chave desconhecida ou valor de tipo/formato errado no JSON.
+        sessao.rollback()
+        raise ErroSeed(f"campo ausente ou inválido nos arquivos de seed: {erro}") from erro
+    except IntegrityError as erro:
+        sessao.rollback()
+        raise ErroSeed(f"dados inválidos nos arquivos de seed: {erro.orig}") from erro
+
+
+def _carregar(sessao: Session, diretorio: Path) -> ResumoSeed:
     linhas = _ler(diretorio, "linhas.json")
     paradas = _ler(diretorio, "paradas.json")
     itinerarios = _ler(diretorio, "itinerarios.json")
@@ -176,6 +191,7 @@ def carregar_seed(sessao: Session, diretorio: Path = DIRETORIO_PADRAO) -> Resumo
         for dados in padroes:
             if dados["padrao"] not in existentes:
                 sessao.add(PadraoLetreiro(id_linha=id_linha, **dados))
+                existentes.add(dados["padrao"])
         total_padroes += len(padroes)
 
     sessao.commit()

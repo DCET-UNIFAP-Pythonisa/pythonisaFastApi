@@ -15,9 +15,13 @@ STATUS_POR_CODIGO = {
 }
 
 
-def resposta_erro(status: int, codigo: str, mensagem: str) -> JSONResponse:
+def resposta_erro(
+    status: int, codigo: str, mensagem: str, headers: dict[str, str] | None = None
+) -> JSONResponse:
     return JSONResponse(
-        status_code=status, content={"erro": {"codigo": codigo, "mensagem": mensagem}}
+        status_code=status,
+        content={"erro": {"codigo": codigo, "mensagem": mensagem}},
+        headers=headers,
     )
 
 
@@ -42,4 +46,4 @@ def registrar_tratadores(app: FastAPI) -> None:
     async def _http(_request: Request, erro: StarletteHTTPException):
         codigo = "NAO_ENCONTRADO" if erro.status_code == 404 else "ERRO_HTTP"
         mensagem = "Recurso não encontrado." if erro.status_code == 404 else str(erro.detail)
-        return resposta_erro(erro.status_code, codigo, mensagem)
+        return resposta_erro(erro.status_code, codigo, mensagem, erro.headers)

@@ -2,10 +2,10 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from pythonisa_api.db.models import HorarioProgramado, RegistroDeteccao, Viagem
+from pythonisa_api.db.models import HorarioProgramado, RegistroDeteccao, RotaParada, Viagem
 from pythonisa_api.erros import DadosInvalidos, ParadaForaDaLinha
 from pythonisa_api.schemas.passagem import PassagemEntrada
 from pythonisa_api.services.consulta import obter_linha, obter_parada
@@ -36,17 +36,33 @@ def horario_mais_proximo(
 def registrar_passagem(sessao: Session, entrada: PassagemEntrada) -> RegistroDeteccao:
     linha = obter_linha(sessao, entrada.id_linha)
     obter_parada(sessao, entrada.id_parada)
-    ordens = [item.ordem for item in linha.itinerario if item.id_parada == entrada.id_parada]
+    ordens = list(
+        sessao.scalars(
+            select(RotaParada.ordem).where(
+                RotaParada.id_linha == linha.id, RotaParada.id_parada == entrada.id_parada
+            )
+        )
+    )
     if not ordens:
         raise ParadaForaDaLinha(entrada.id_linha, entrada.id_parada)
 
     momento = para_local_naive(entrada.timestamp_passagem)
     id_viagem = entrada.id_viagem
+    ordem = min(ordens)
 
     if id_viagem is not None:
         viagem = sessao.get(Viagem, id_viagem)
         if viagem is None or viagem.id_linha != linha.id:
             raise DadosInvalidos(f"Viagem '{id_viagem}' não existe para a linha '{linha.id}'.")
+        # Parada repetida no itinerário (ex.: terminal na ordem 1 e na última):
+        # usa a primeira ordem depois da última passagem registrada nesta viagem.
+        ultima = sessao.scalar(
+            select(func.max(RegistroDeteccao.ordem_itinerario)).where(
+                RegistroDeteccao.id_viagem == id_viagem
+            )
+        )
+        if ultima is not None:
+            ordem = min((o for o in ordens if o > ultima), default=ordem)
     elif 1 in ordens:
         # Passagem na primeira parada = início de uma nova viagem.
         horario = horario_mais_proximo(sessao, linha.id, momento)
@@ -64,7 +80,7 @@ def registrar_passagem(sessao: Session, entrada: PassagemEntrada) -> RegistroDet
         id_linha=linha.id,
         id_parada=entrada.id_parada,
         id_viagem=id_viagem,
-        ordem_itinerario=min(ordens),
+        ordem_itinerario=ordem,
         timestamp_passagem=momento,
         origem=entrada.origem,
         texto_letreiro=entrada.texto_letreiro,

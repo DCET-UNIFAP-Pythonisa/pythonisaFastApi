@@ -23,9 +23,8 @@ class Linha(Base):
     ativa: Mapped[bool] = mapped_column(default=True)
 
     itinerario: Mapped[list["RotaParada"]] = relationship(
-        back_populates="linha", order_by="RotaParada.ordem", cascade="all, delete-orphan"
+        order_by="RotaParada.ordem", cascade="all, delete-orphan"
     )
-    padroes: Mapped[list["PadraoLetreiro"]] = relationship(back_populates="linha")
 
 
 class PadraoLetreiro(Base):
@@ -36,8 +35,6 @@ class PadraoLetreiro(Base):
     id_linha: Mapped[str] = mapped_column(ForeignKey("linha.id"))
     padrao: Mapped[str] = mapped_column(String(200))
     prioridade: Mapped[int] = mapped_column(default=0)
-
-    linha: Mapped[Linha] = relationship(back_populates="padroes")
 
 
 class Parada(Base):
@@ -60,8 +57,8 @@ class RotaParada(Base):
     sentido: Mapped[str] = mapped_column(String(5))
     minutos_programados: Mapped[int] = mapped_column(default=0)
 
-    linha: Mapped[Linha] = relationship(back_populates="itinerario")
-    parada: Mapped[Parada] = relationship()
+    # selectin: carrega as paradas do itinerário numa consulta só (evita uma consulta por item).
+    parada: Mapped[Parada] = relationship(lazy="selectin")
 
 
 class HorarioProgramado(Base):
@@ -103,7 +100,7 @@ class RegistroDeteccao(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_novo_id)
     id_linha: Mapped[str] = mapped_column(ForeignKey("linha.id"))
     id_parada: Mapped[str] = mapped_column(ForeignKey("parada.id"))
-    id_viagem: Mapped[str | None] = mapped_column(ForeignKey("viagem.id"))
+    id_viagem: Mapped[str | None] = mapped_column(ForeignKey("viagem.id"), index=True)
     ordem_itinerario: Mapped[int | None]
     timestamp_passagem: Mapped[datetime] = mapped_column(index=True)
     origem: Mapped[str] = mapped_column(String(8))

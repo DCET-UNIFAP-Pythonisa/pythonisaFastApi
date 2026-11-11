@@ -13,7 +13,7 @@ from pythonisa_api.seed.carregar import carregar_seed
 def settings_teste(tmp_path) -> Settings:
     return Settings(
         database_url=f"sqlite:///{tmp_path / 'teste.db'}",
-        cors_origins=["*"],
+        cors_origins=["http://localhost:5555"],
         _env_file=None,
     )
 
@@ -45,3 +45,9 @@ SEED_MINI = Path(__file__).parent / "fixtures" / "seed_mini"
 def sessao_com_seed_mini(sessao):
     carregar_seed(sessao, SEED_MINI)
     return sessao
+
+
+@pytest.fixture
+def api(cliente, sessao_com_seed_mini):
+    """Cliente HTTP com o seed mini carregado."""
+    return cliente

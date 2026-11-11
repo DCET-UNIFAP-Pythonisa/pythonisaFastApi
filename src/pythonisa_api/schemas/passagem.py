@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_serializer
+from pydantic import AwareDatetime, BaseModel, Field, field_serializer
 
 from pythonisa_api.tempo import para_aware
 
@@ -20,8 +20,6 @@ class PassagemEntrada(BaseModel):
 
 
 class PassagemSaida(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: str
     id_linha: str
     id_parada: str

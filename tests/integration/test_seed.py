@@ -83,32 +83,6 @@ def test_itinerario_substituido(sessao, tmp_path):
     assert [r.id_parada for r in sessao.get(Linha, "linha-a").itinerario] == ["p1", "p2"]
 
 
-def test_parada_inexistente_no_itinerario(sessao, tmp_path):
-    copia = _copia_mini(tmp_path)
-    _editar_json(
-        copia,
-        "itinerarios.json",
-        lambda d: d["linha-a"].append({"id_parada": "p-fantasma", "sentido": "ida"}),
-    )
-    with pytest.raises(ErroSeed, match="p-fantasma"):
-        carregar_seed(sessao, copia)
-
-
-def test_sentido_invalido(sessao, tmp_path):
-    copia = _copia_mini(tmp_path)
-    _editar_json(copia, "itinerarios.json", lambda d: d["linha-a"][0].update(sentido="norte"))
-    with pytest.raises(ErroSeed, match="norte"):
-        carregar_seed(sessao, copia)
-
-
-def test_erro_nao_grava_nada(sessao, tmp_path):
-    copia = _copia_mini(tmp_path)
-    _editar_json(copia, "itinerarios.json", lambda d: d["linha-b"][0].update(sentido="norte"))
-    with pytest.raises(ErroSeed):
-        carregar_seed(sessao, copia)
-    assert _contagens(sessao).linhas == 0
-
-
 # Centro aproximado do campus Marco Zero da UNIFAP (polígono do OpenStreetMap).
 UNIFAP_LAT, UNIFAP_LON = -0.0039, -51.0854
 
@@ -128,3 +102,94 @@ def test_seed_real_so_territorio_unifap(sessao):
     for parada in sessao.scalars(select(Parada)).all():
         distancia = haversine_metros(parada.latitude, parada.longitude, UNIFAP_LAT, UNIFAP_LON)
         assert distancia <= 1500, f"{parada.id} está a {distancia:.0f} m da UNIFAP"
+
+
+def test_letreiro_repetido_no_json_nao_quebra(sessao, tmp_path):
+    copia = _copia_mini(tmp_path)
+    _editar_json(copia, "letreiros.json", lambda d: d["linha-a"].append(d["linha-a"][0]))
+    carregar_seed(sessao, copia)
+    assert _contagens(sessao).padroes == 2
+
+
+def test_rodar_de_novo_atualiza_nome_da_parada(sessao, tmp_path):
+    carregar_seed(sessao, MINI)
+    copia = _copia_mini(tmp_path)
+    _editar_json(copia, "paradas.json", lambda d: d[0].update(nome="Parada Um"))
+    carregar_seed(sessao, copia)
+    sessao.expire_all()
+    assert sessao.get(Parada, "p1").nome == "Parada Um"
+
+
+def _editar(nome: str, alterar):
+    return lambda diretorio: _editar_json(diretorio, nome, alterar)
+
+
+def _escrever(nome: str, texto: str):
+    return lambda diretorio: (diretorio / nome).write_text(texto, encoding="utf-8")
+
+
+def _apagar(nome: str):
+    return lambda diretorio: (diretorio / nome).unlink()
+
+
+# Cada caso: como estragar uma cópia do seed mini e o trecho esperado na mensagem de erro.
+CASOS_DE_ERRO = {
+    "arquivo_ausente": (_apagar("grade.json"), "grade.json"),
+    "json_malformado": (_escrever("linhas.json", "[{"), "linhas.json"),
+    "arquivo_em_outra_codificacao": (
+        lambda diretorio: (diretorio / "linhas.json").write_bytes(
+            '[{"id": "x", "nome": "Amapá"}]'.encode("cp1252")
+        ),
+        "linhas.json",
+    ),
+    "parada_inexistente": (
+        _editar(
+            "itinerarios.json",
+            lambda d: d["linha-a"].append({"id_parada": "p-fantasma", "sentido": "ida"}),
+        ),
+        "p-fantasma",
+    ),
+    "sentido_invalido": (
+        _editar("itinerarios.json", lambda d: d["linha-b"][0].update(sentido="norte")),
+        "norte",
+    ),
+    "itinerario_vazio": (_editar("itinerarios.json", lambda d: d.update({"linha-a": []})), "vazio"),
+    "linha_desconhecida": (_editar("grade.json", lambda d: d.update({"linha-z": {}})), "linha-z"),
+    "linha_sem_dados": (_editar("letreiros.json", lambda d: d.pop("linha-b")), "linha-b"),
+    "tipo_dia_invalido": (
+        _editar("grade.json", lambda d: d["linha-a"].update(feriado=d["linha-a"]["util"])),
+        "feriado",
+    ),
+    "horario_invalido": (
+        _editar("grade.json", lambda d: d["linha-a"]["util"].update(inicio="25:00")),
+        "25:00",
+    ),
+    "intervalo_nao_positivo": (
+        _editar("grade.json", lambda d: d["linha-a"]["util"].update(intervalo_min=0)),
+        "intervalo_min",
+    ),
+    "inicio_depois_do_fim": (
+        _editar("grade.json", lambda d: d["linha-a"]["util"].update(inicio="08:00")),
+        "depois do fim",
+    ),
+    "campo_ausente": (
+        _editar("grade.json", lambda d: d["linha-a"]["util"].pop("intervalo_min")),
+        "intervalo_min",
+    ),
+    "letreiro_sem_padrao": (
+        _editar("letreiros.json", lambda d: d["linha-a"][0].pop("padrao")),
+        "padrao",
+    ),
+    "chave_desconhecida": (_editar("linhas.json", lambda d: d[0].update(empressa="X")), "empressa"),
+    "parada_sem_latitude": (_editar("paradas.json", lambda d: d[0].pop("latitude")), "latitude"),
+}
+
+
+@pytest.mark.parametrize("caso", CASOS_DE_ERRO)
+def test_erro_nos_arquivos_vira_erro_seed_e_nada_e_gravado(sessao, tmp_path, caso):
+    estragar, trecho = CASOS_DE_ERRO[caso]
+    copia = _copia_mini(tmp_path)
+    estragar(copia)
+    with pytest.raises(ErroSeed, match=trecho):
+        carregar_seed(sessao, copia)
+    assert _contagens(sessao) == ResumoSeed(0, 0, 0, 0, 0)

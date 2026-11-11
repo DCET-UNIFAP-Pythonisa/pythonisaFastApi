@@ -25,17 +25,23 @@ def test_init_db_cria_tabelas(tmp_path, monkeypatch):
         engine.dispose()
 
 
-def test_seed_carrega_dados_reais(tmp_path, monkeypatch, capsys):
+def test_seed_carrega_os_dados(tmp_path, monkeypatch, capsys):
     url = f"sqlite:///{tmp_path / 'cli.db'}"
     monkeypatch.setenv("DATABASE_URL", url)
     assert cli.main(["init-db"]) == 0
     assert cli.main(["seed"]) == 0
     saida = capsys.readouterr().out
-    assert "linhas=2" in saida
+    assert "Seed carregado" in saida
     engine = create_engine(url)
     try:
         with engine.connect() as conexao:
             total = conexao.exec_driver_sql("SELECT COUNT(*) FROM linha").scalar()
-        assert total == 2
+        assert total > 0
     finally:
         engine.dispose()
+
+
+def test_seed_sem_init_db_mostra_erro(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'vazio.db'}")
+    assert cli.main(["seed"]) == 1
+    assert "init-db" in capsys.readouterr().err

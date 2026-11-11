@@ -1,26 +1,21 @@
 """Formato JSON das respostas de consulta (contrato com o app)."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
-class _DoOrm(BaseModel):
-    # Permite criar o schema direto de um objeto do SQLAlchemy (model_validate(linha)).
-    model_config = ConfigDict(from_attributes=True)
-
-
-class LinhaSaida(_DoOrm):
+class LinhaSaida(BaseModel):
     id: str
     codigo: str | None
     nome: str
     empresa: str | None
 
 
-class LinhaResumo(_DoOrm):
+class LinhaResumo(BaseModel):
     id: str
     nome: str
 
 
-class ParadaSaida(_DoOrm):
+class ParadaSaida(BaseModel):
     id: str
     nome: str
     referencia: str | None
@@ -28,7 +23,7 @@ class ParadaSaida(_DoOrm):
     longitude: float
 
 
-class ItemItinerario(_DoOrm):
+class ItemItinerario(BaseModel):
     ordem: int
     sentido: str
     minutos_programados: int
