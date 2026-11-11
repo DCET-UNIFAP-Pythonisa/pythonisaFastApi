@@ -9,15 +9,17 @@ from sqlalchemy.exc import OperationalError
 from pythonisa_api.config import Settings
 from pythonisa_api.db.base import criar_engine, criar_fabrica_sessao, criar_tabelas
 from pythonisa_api.seed.carregar import ErroSeed, carregar_seed
+from pythonisa_api.simulador.historico import simular_historico
+from pythonisa_api.tempo import agora_local
 
 
-def _init_db(engine: Engine) -> int:
+def _init_db(engine: Engine, settings: Settings, args: argparse.Namespace) -> int:
     criar_tabelas(engine)
     print(f"Tabelas criadas em {engine.url}")
     return 0
 
 
-def _seed(engine: Engine) -> int:
+def _seed(engine: Engine, settings: Settings, args: argparse.Namespace) -> int:
     try:
         with criar_fabrica_sessao(engine)() as sessao:
             resumo = carregar_seed(sessao)
@@ -40,7 +42,15 @@ def _seed(engine: Engine) -> int:
     return 0
 
 
-COMANDOS = {"init-db": _init_db, "seed": _seed}
+def _simular_historico(engine: Engine, settings: Settings, args: argparse.Namespace) -> int:
+    hoje = agora_local().date()
+    with criar_fabrica_sessao(engine)() as sessao:
+        total = simular_historico(sessao, ate=hoje, dias=args.dias)
+    print(f"Histórico simulado: {total} passagens nos {args.dias} dias anteriores a {hoje}.")
+    return 0
+
+
+COMANDOS = {"init-db": _init_db, "seed": _seed, "simular-historico": _simular_historico}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -48,11 +58,14 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="comando", required=True)
     sub.add_parser("init-db", help="cria as tabelas do banco")
     sub.add_parser("seed", help="carrega linhas, paradas, itinerários, grade e letreiros")
+    simular = sub.add_parser("simular-historico", help="gera passagens simuladas (base de treino)")
+    simular.add_argument("--dias", type=int, default=60, help="quantos dias simular (padrão 60)")
     args = parser.parse_args(argv)
 
-    engine = criar_engine(Settings().database_url)
+    settings = Settings()
+    engine = criar_engine(settings.database_url)
     try:
-        return COMANDOS[args.comando](engine)
+        return COMANDOS[args.comando](engine, settings, args)
     finally:
         engine.dispose()
 
