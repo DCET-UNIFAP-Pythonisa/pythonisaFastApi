@@ -117,4 +117,11 @@ uvicorn pythonisa_api.main:app --reload   # http://localhost:8000/docs
   - importar `main.py` cria a pasta `data/`;
   - a `DATABASE_URL` relativa depende da pasta de onde o servidor é iniciado;
   - uma passagem duplicada na ordem 1 cria duas viagens;
-  - um timestamp no futuro é aceito.
+  - um timestamp no futuro é aceito;
+  - sem o parâmetro `agora`, o `gerado_em` de `/previsoes` sai com microssegundos;
+  - o `round` do Python arredonda meio minuto para o par (2,5 → 2) em `diferenca_minutos`/`minutos_restantes`;
+  - o simulador carrega dados de paradas que não usa (custo de milissegundos);
+  - o modelo `.joblib` é carregado com pickle: o caminho deve vir sempre da configuração, nunca de uma requisição.
+- **Alertas de segurança (aceitos no MVP):** `POST /deteccoes` não tem autenticação e o CORS está liberado (`*`). Com dados simulados não há risco real, mas antes de ligar a câmera da Visão Computacional ou expor o servidor fora da máquina da demo: exigir uma chave de API no `POST /deteccoes` e restringir `CORS_ORIGINS`.
+- **Decisões do grupo pendentes:** remover ou não os campos `texto_letreiro`/`confianca_ocr` e a coluna `Linha.ativa` (sobras da integração adiada com a Visão Computacional).
+- **Revisão independente da Parte 2:** foi feita só pelo autor; o usuário pode pedir o agente `code-reviewer`.
